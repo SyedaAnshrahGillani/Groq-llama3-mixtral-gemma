@@ -8,7 +8,7 @@ import pickle  # For loading your pre-trained model or data.
 import numpy as np  # For numerical operations (e.g., handling vectors).
 from langchain.embeddings import OpenAIEmbeddings  # Assuming you're using OpenAI embeddings (or replace with your own).
 from langchain.vectorstores import FAISS  # For loading FAISS vector store.
-from logger import log_runtime  # Import your logging decorator.
+  # Import your logging decorator.
 
 # Load environment variables from .env at the project root
 project_root = Path(__file__).resolve().parent
