@@ -2,3 +2,7 @@ streamlit
 python-dotenv==0.21.0
 groq
 altair==4.2.2
+faiss-cpu # Replace with the appropriate version for your system
+langchain  # Adjust to the correct version of Langchain
+numpy  # Or the version you need
+
