@@ -61,7 +61,7 @@ class ModelSelector:
     """Allows the user to select a model from a predefined list."""
     def __init__(self):
         # List of available models to choose from
-        self.models = ["llama-3.2-1b-preview","llama-3.2-3b-preview","llama-3.2-11b-vision-preview","llama-3.2-90b-vision-preview"]
+        self.models = ["llama-3.2-1b-preview","llama-3.2-3b-preview","llama-3.2-11b-vision-preview"]
 
 # Display model selection in a sidebar with a title
     def select(self):
