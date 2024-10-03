@@ -4,7 +4,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 from groq import Groq
 from langchain.vectorstores import FAISS  # Ensure FAISS is imported from langchain
-import pickle  # Import pickle for serialization/deserialization
 
 # Load environment variables from .env at the project root
 project_root = Path(__file__).resolve().parent
@@ -69,16 +68,20 @@ class ModelSelector:
             st.sidebar.title("Groq Chat with Llama3 + α")
             return st.selectbox("Select a model:", self.models)
 
-# Load the vector store using FAISS
-def load_vector_store(vectorstore_name):
-    vector_store_path = Path("vectorstore")  # Path to your FAISS index
-    if vectorstore_name == "Faiss":
-        # Load the FAISS vector store
-        db = FAISS.load_local(vector_store_path, self.__embedding_function, allow_dangerous_deserialization=True)
-        retriever = db.as_retriever(search_kwargs={"k": 40})
-        return retriever
-    else:
-        raise ValueError("Unsupported vector store name")
+class App:
+    def __init__(self):
+        self.__embedding_function = None  # Initialize the embedding function as needed
+
+    # Load the vector store using FAISS
+    def load_vector_store(self, vectorstore_name):
+        vector_store_path = Path("vectorstore")  # Path to your FAISS index
+        if vectorstore_name == "Faiss":
+            # Load the FAISS vector store
+            db = FAISS.load_local(vector_store_path, self.__embedding_function, allow_dangerous_deserialization=True)
+            retriever = db.as_retriever(search_kwargs={"k": 40})
+            return retriever
+        else:
+            raise ValueError("Unsupported vector store name")
 
 # Get response from the LLM using RAG logic
 def get_llm_response(llm, question, retriever):
@@ -90,14 +93,17 @@ def get_llm_response(llm, question, retriever):
 # Entry point for the Streamlit app
 def main():
     user_input = st.text_input("Enter message to AI models...")
-    model = ModelSelector()
-    selected_model = model.select()
+    model_selector = ModelSelector()
+    selected_model = model_selector.select()
 
     message = Message()
 
+    # Create an instance of the App class to load the vector store
+    app_instance = App()
+
     # Load the vector store
     vectorstore_name = "Faiss"  # Adjust if necessary
-    retriever = load_vector_store(vectorstore_name)
+    retriever = app_instance.load_vector_store(vectorstore_name)
 
     # If there's user input, process it through the selected model
     if user_input:
