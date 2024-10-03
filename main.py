@@ -1,26 +1,18 @@
-import os  # To interact with the operating system and environment variables.
-import streamlit as st  # To create and run interactive web applications directly through Python scripts.
-from pathlib import Path  # To provide object-oriented filesystem paths, enhancing compatibility across different operating systems.
-from dotenv import load_dotenv  # To load environment variables from a .env file into the system's environment.
-from groq import Groq  # To interact with Groq's API for executing machine learning models and handling data operations.
-import pickle  # To load the saved FAISS index
-import faiss  # To perform similarity search using FAISS
-from sentence_transformers import SentenceTransformer  # To encode the query for vector search
+import os
+import streamlit as st
+from pathlib import Path
+from dotenv import load_dotenv
+from groq import Groq
+from langchain.vectorstores import FAISS
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferMemory
+from langchain.llms import HuggingFaceHub
 
 # Load environment variables from .env at the project root
 project_root = Path(__file__).resolve().parent
 load_dotenv(project_root / ".env")
-
-# Load FAISS index and associated metadata
-index_path = project_root / "vectorstore/index.faiss"
-meta_path = project_root / "vectorstore/index.pkl"
-faiss_index = faiss.read_index(str(index_path))
-
-with open(meta_path, 'rb') as f:
-    metadata = pickle.load(f)  # Metadata includes texts or documents
-
-# Load sentence transformer model for encoding the query
-embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 class GroqAPI:
     """Handles API operations with Groq to generate chat responses."""
@@ -28,7 +20,6 @@ class GroqAPI:
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.model_name = model_name
 
-    # Internal method to fetch responses from the Groq API
     def _response(self, message):
         return self.client.chat.completions.create(
             model=self.model_name,
@@ -39,26 +30,22 @@ class GroqAPI:
             stop=None,
         )
 
-    # Generator to stream responses from the API
-    def response_stream(self, message):
+    def response_stream(self, message):        
         for chunk in self._response(message):
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
 class Message:
     """Manages chat messages within the Streamlit UI."""
-    system_prompt = "You are a professional AI. Please generate responses in English to all user inputs."
+    system_prompt = "You are a professional AI assistant. Please generate responses based on the retrieved context and user input."
 
-    # Initialize chat history if it doesn't exist in session state
     def __init__(self):
         if "messages" not in st.session_state:
             st.session_state.messages = [{"role": "system", "content": self.system_prompt}]
 
-    # Add a new message to the session state
     def add(self, role: str, content: str):
         st.session_state.messages.append({"role": role, "content": content})
 
-    # Display all past messages in the UI, skipping system messages
     def display_chat_history(self):
         for message in st.session_state.messages:
             if message["role"] == "system":
@@ -66,7 +53,6 @@ class Message:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-    # Stream API responses to the Streamlit chat message UI
     def display_stream(self, generator):
         with st.chat_message("assistant"):
             return st.write_stream(generator)
@@ -74,48 +60,52 @@ class Message:
 class ModelSelector:
     """Allows the user to select a model from a predefined list."""
     def __init__(self):
-        # List of available models to choose from
         self.models = ["llama-3.2-1b-preview", "llama-3.2-3b-preview", "llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
 
-    # Display model selection in a sidebar with a title
     def select(self):
         with st.sidebar:
-            st.sidebar.title("Groq Chat with Llama3 + α")
+            st.sidebar.title("Groq Chat with Llama3 + RAG")
             return st.selectbox("Select a model:", self.models)
 
-def perform_faiss_search(query):
-    """Perform FAISS similarity search on the vector store using the user's query."""
-    query_vector = embedding_model.encode([query])  # Encode the query into a vector
-    D, I = faiss_index.search(query_vector, k=5)  # Perform the search, returning the top 5 similar documents
-    results = [metadata[i] for i in I[0]]  # Retrieve documents based on the search result indices
-    return results
+class RAG:
+    """Handles Retrieval-Augmented Generation using FAISS."""
+    def __init__(self, index_path: str, embeddings_model: str = "sentence-transformers/all-MiniLM-L6-v2"):
+        self.embeddings = HuggingFaceEmbeddings(model_name=embeddings_model)
+        self.vectorstore = FAISS.load_local(index_path, self.embeddings)
+        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+
+    def get_response(self, query: str, model_name: str):
+        llm = HuggingFaceHub(repo_id=model_name, model_kwargs={"temperature": 0.5, "max_length": 512})
+        qa = ConversationalRetrievalChain.from_llm(
+            llm=llm,
+            retriever=self.vectorstore.as_retriever(),
+            memory=self.memory
+        )
+        return qa({"question": query})
 
 def main():
-    user_input = st.text_input("Enter message to AI models...")
-    model = ModelSelector()
-    selected_model = model.select()
+    st.title("RAG-enhanced Groq Chat")
 
-    message = Message()
+    model_selector = ModelSelector()
+    selected_model = model_selector.select()
 
-    # If there's user input, perform FAISS search and process the context with the selected model
+    message_manager = Message()
+    rag = RAG("vectorstore")  # Update this path to your FAISS index location
+
+    user_input = st.text_input("Enter your question:")
+
     if user_input:
-        llm = GroqAPI(selected_model)
+        message_manager.add("user", user_input)
+        message_manager.display_chat_history()
 
-        # Perform similarity search using FAISS
-        similar_contexts = perform_faiss_search(user_input)
+        with st.spinner("Generating response..."):
+            rag_response = rag.get_response(user_input, selected_model)
+            groq_api = GroqAPI(selected_model)
+            
+            context_message = f"Context: {rag_response['source_documents']}\n\nHuman: {user_input}\n\nAI:"
+            full_response = message_manager.display_stream(groq_api.response_stream([{"role": "user", "content": context_message}]))
 
-        # Combine the similar context into a single string to pass to the LLM
-        context = "\n".join(similar_contexts)
-        st.write("Retrieved Context for your query:", context)  # Show the retrieved context
-
-        # Add the user message and retrieved context to the prompt
-        prompt = f"Context: {context}\n\nQuestion: {user_input}"
-        message.add("user", prompt)
-        message.display_chat_history()
-
-        # Pass the message with context to the model and stream the response
-        response = message.display_stream(llm.response_stream(st.session_state.messages))
-        message.add("assistant", response)
+        message_manager.add("assistant", full_response)
 
 if __name__ == "__main__":
     main()
