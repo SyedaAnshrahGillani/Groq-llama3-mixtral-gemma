@@ -3,7 +3,8 @@ import streamlit as st
 from pathlib import Path
 from dotenv import load_dotenv
 from groq import Groq
-from langchain.vectorstores import FAISS  # Ensure FAISS is imported from langchain
+from langchain_community.vectorstores import FAISS  # Ensure FAISS is imported from langchain
+import numpy as np  # Import numpy for handling numerical data
 
 # Load environment variables from .env at the project root
 project_root = Path(__file__).resolve().parent
@@ -68,20 +69,23 @@ class ModelSelector:
             st.sidebar.title("Groq Chat with Llama3 + α")
             return st.selectbox("Select a model:", self.models)
 
-class App:
-    def __init__(self):
-        self.__embedding_function = None  # Initialize the embedding function as needed
+# Define your embedding function (this is a placeholder example)
+def example_embedding_function(text: str):
+    # Replace this with your actual embedding model logic
+    # For example, if you're using Hugging Face or OpenAI, 
+    # you would call the model here to get the embeddings
+    return np.random.rand(768).tolist()  # Example: random 768-dimensional vector
 
-    # Load the vector store using FAISS
-    def load_vector_store(self, vectorstore_name):
-        vector_store_path = Path("vectorstore")  # Path to your FAISS index
-        if vectorstore_name == "Faiss":
-            # Load the FAISS vector store
-            db = FAISS.load_local(vector_store_path, self.__embedding_function, allow_dangerous_deserialization=True)
-            retriever = db.as_retriever(search_kwargs={"k": 40})
-            return retriever
-        else:
-            raise ValueError("Unsupported vector store name")
+# Load the vector store using FAISS
+def load_vector_store(vectorstore_name):
+    vector_store_path = Path("vectorstore")  # Path to your FAISS index
+    if vectorstore_name == "Faiss":
+        # Load the FAISS vector store
+        db = FAISS.load_local(vector_store_path, example_embedding_function, allow_dangerous_deserialization=True)
+        retriever = db.as_retriever(search_kwargs={"k": 40})
+        return retriever
+    else:
+        raise ValueError("Unsupported vector store name")
 
 # Get response from the LLM using RAG logic
 def get_llm_response(llm, question, retriever):
@@ -93,17 +97,14 @@ def get_llm_response(llm, question, retriever):
 # Entry point for the Streamlit app
 def main():
     user_input = st.text_input("Enter message to AI models...")
-    model_selector = ModelSelector()
-    selected_model = model_selector.select()
+    model = ModelSelector()
+    selected_model = model.select()
 
     message = Message()
 
-    # Create an instance of the App class to load the vector store
-    app_instance = App()
-
     # Load the vector store
     vectorstore_name = "Faiss"  # Adjust if necessary
-    retriever = app_instance.load_vector_store(vectorstore_name)
+    retriever = load_vector_store(vectorstore_name)
 
     # If there's user input, process it through the selected model
     if user_input:
