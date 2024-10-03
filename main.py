@@ -4,9 +4,8 @@ from pathlib import Path  # To provide object-oriented filesystem paths, enhanci
 from dotenv import load_dotenv  # To load environment variables from a .env file into the system's environment for secure and easy access.
 from groq import Groq  # To interact with Groq's API for executing machine learning models and handling data operations.
 from langchain import FAISS  # Import FAISS for vector store handling
-from langchain.chains import create_stuff_documents_chain, create_retrieval_chain  # Import relevant chain functions
+from langchain.chains import ConversationalRetrievalChain  # Import ConversationalRetrievalChain
 from langchain_core.prompts import ChatPromptTemplate  # Import for prompt templates
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings  # For embeddings
 import pickle  # To load the FAISS vector store
 
 # Load environment variables from .env at the project root
@@ -82,9 +81,8 @@ def load_vector_store():
     return vector_store
 
 # Get response from the LLM using RAG logic
-def get_llm_response(llm, prompt, question, vector_store):
-    document_chain = create_stuff_documents_chain(llm, prompt)
-    retrieval_chain = create_retrieval_chain(vector_store.as_retriever(), document_chain)
+def get_llm_response(llm, question, vector_store):
+    retrieval_chain = ConversationalRetrievalChain.from_llm(llm, vector_store.as_retriever())
     response = retrieval_chain.invoke({'input': question})
     return response
 
@@ -99,18 +97,6 @@ def main():
     # Load vector store once
     vector_store = load_vector_store()
 
-    # Prepare prompt for RAG
-    prompt = ChatPromptTemplate.from_template(
-        """
-        Answer the question based on the provided context only. If the question is not within the context, do not try to answer
-        and respond that the asked question is out of context or something similar.
-        Please provide the most accurate response based on the question.
-        <context>
-        {context}
-        Questions: {input}
-        """
-    )
-
     # If there's user input, process it through the selected model
     if user_input:
         llm = GroqAPI(selected_model)
@@ -118,7 +104,7 @@ def main():
         message.display_chat_history()
         
         # Get response using RAG logic
-        response = get_llm_response(llm, prompt, user_input, vector_store)
+        response = get_llm_response(llm, user_input, vector_store)
         
         message.add("assistant", response['answer'])
         message.display_chat_history()
