@@ -25,7 +25,6 @@ build/
 
 # Ignore configuration files
 *.local
-*.pkl
 *.sqlite3
 *.db
 
