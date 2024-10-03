@@ -1,9 +1,10 @@
 import os
 import json
 import streamlit as st
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings  # Updated import for embeddings
 from langchain.chains import RetrievalQA
-from langchain.retrievers import Chroma
+# Update or find the correct retriever class; this is a placeholder
+from langchain.retrievers import SomeOtherRetriever  # Replace with the correct retriever class
 from langchain.memory import ConversationBufferMemory
 
 ## Introduction
@@ -18,9 +19,9 @@ st.set_page_config(page_title="Multi Document RAG Chatbot", page_icon="?")
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 if 'vector_store' not in st.session_state:
-    st.session_state.vector_store = load_vector_store()
+    st.session_state.vector_store = load_vector_store()  # Ensure this function is defined
 if 'chain' not in st.session_state:
-    st.session_state.chain = create_chain(st.session_state.vector_store)
+    st.session_state.chain = create_chain(st.session_state.vector_store)  # Ensure this function is defined
 
 ## Introduction
 user_input = st.chat_input("Ask a question:")
