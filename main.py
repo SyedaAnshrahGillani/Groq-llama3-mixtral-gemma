@@ -72,11 +72,13 @@ class FAISSHandler:
         self.documents = self._load_documents()
 
     def _load_faiss_index(self):
-        index_path = os.path.join(self.vector_store_path, "faiss.index")
+        # Update to load "index.faiss" instead of "faiss.index"
+        index_path = os.path.join(self.vector_store_path, "index.faiss")
         return faiss.read_index(index_path)
 
     def _load_documents(self):
-        with open(os.path.join(self.vector_store_path, "documents.pkl"), "rb") as f:
+        # Load documents from the pickle file
+        with open(os.path.join(self.vector_store_path, "index.pkl"), "rb") as f:
             return pickle.load(f)
 
     def search(self, query_vector, top_k=3):
@@ -98,14 +100,14 @@ def main():
     message = Message()
 
     # Load FAISS and vector store
-    vector_store_path = "./vectorstore"
+    vector_store_path = "./vectorstore"  # Path to the vector store directory
     faiss_handler = FAISSHandler(vector_store_path)
 
     # If the user enters a query
     if user_input:
         # 1. Convert user query to vector (this assumes vectorization is already handled)
         # For demo purposes, assume it's done and we use some dummy vector here
-        query_vector = faiss.vector_to_array(faiss_handler.index)
+        query_vector = faiss.vector_to_array(faiss_handler.index)  # Example vector
 
         # 2. Perform similarity search on the FAISS index
         relevant_docs = faiss_handler.search(query_vector)
