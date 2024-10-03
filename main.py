@@ -6,8 +6,7 @@ from groq import Groq
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
+from langchain.docstore.document import Document
 
 # Load environment variables from .env at the project root
 project_root = Path(__file__).resolve().parent
@@ -72,21 +71,35 @@ class RAG:
         self.index_path = Path(index_path)
         self.embeddings = HuggingFaceEmbeddings(model_name=embeddings_model)
         self.vectorstore = self.load_or_create_vectorstore()
-        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
     def load_or_create_vectorstore(self):
         if self.index_path.exists():
-            return FAISS.load_local(str(self.index_path), self.embeddings, allow_dangerous_deserialization=True)
+            try:
+                return FAISS.load_local(str(self.index_path), self.embeddings)
+            except Exception as e:
+                st.error(f"Error loading existing index: {e}. Creating a new one.")
+                return self.create_new_vectorstore()
         else:
-            documents = ["This is a placeholder document for the FAISS index."]
-            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-            texts = text_splitter.create_documents(documents)
-            vectorstore = FAISS.from_documents(texts, self.embeddings)
-            vectorstore.save_local(str(self.index_path))
-            return vectorstore
+            return self.create_new_vectorstore()
 
-    def get_relevant_context(self, query: str):
-        return self.vectorstore.similarity_search(query, k=2)
+    def create_new_vectorstore(self):
+        documents = [
+            "This is a placeholder document for the FAISS index.",
+            "Add more relevant documents here to populate your knowledge base."
+        ]
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+        texts = text_splitter.create_documents(documents)
+        vectorstore = FAISS.from_documents(texts, self.embeddings)
+        vectorstore.save_local(str(self.index_path))
+        return vectorstore
+
+    def get_relevant_context(self, query: str, k: int = 2):
+        try:
+            docs = self.vectorstore.similarity_search(query, k=k)
+            return [doc.page_content for doc in docs]
+        except Exception as e:
+            st.error(f"Error during similarity search: {e}")
+            return []
 
 def main():
     st.title("RAG-enhanced Groq Chat with Llama3")
@@ -104,8 +117,8 @@ def main():
         message_manager.display_chat_history()
 
         with st.spinner("Generating response..."):
-            relevant_docs = rag.get_relevant_context(user_input)
-            context = "\n".join([doc.page_content for doc in relevant_docs])
+            relevant_contexts = rag.get_relevant_context(user_input)
+            context = "\n".join(relevant_contexts) if relevant_contexts else "No relevant context found."
             
             groq_api = GroqAPI(selected_model)
             
