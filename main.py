@@ -77,7 +77,7 @@ class RAG:
 
     def load_or_create_vectorstore(self):
         if self.index_path.exists():
-            return FAISS.load_local(str(self.index_path), self.embeddings)
+            return FAISS.load_local(str(self.index_path), self.embeddings, allow_dangerous_deserialization=True)
         else:
             # Create a simple document if the index doesn't exist
             documents = ["This is a placeholder document for the FAISS index."]
