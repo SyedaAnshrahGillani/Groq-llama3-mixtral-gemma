@@ -8,7 +8,6 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
-from langchain_community.llms import HuggingFaceHub
 
 # Load environment variables from .env at the project root
 project_root = Path(__file__).resolve().parent
@@ -37,7 +36,7 @@ class GroqAPI:
 
 class Message:
     """Manages chat messages within the Streamlit UI."""
-    system_prompt = "You are a professional AI assistant. Please generate responses based on the retrieved context and user input."
+    system_prompt = "You are a professional AI. Please generate responses in English to all user inputs."
 
     def __init__(self):
         if "messages" not in st.session_state:
@@ -79,7 +78,6 @@ class RAG:
         if self.index_path.exists():
             return FAISS.load_local(str(self.index_path), self.embeddings, allow_dangerous_deserialization=True)
         else:
-            # Create a simple document if the index doesn't exist
             documents = ["This is a placeholder document for the FAISS index."]
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
             texts = text_splitter.create_documents(documents)
@@ -87,23 +85,17 @@ class RAG:
             vectorstore.save_local(str(self.index_path))
             return vectorstore
 
-    def get_response(self, query: str, model_name: str):
-        llm = HuggingFaceHub(repo_id=model_name, model_kwargs={"temperature": 0.5, "max_length": 512})
-        qa = ConversationalRetrievalChain.from_llm(
-            llm=llm,
-            retriever=self.vectorstore.as_retriever(),
-            memory=self.memory
-        )
-        return qa({"question": query})
+    def get_relevant_context(self, query: str):
+        return self.vectorstore.similarity_search(query, k=2)
 
 def main():
-    st.title("RAG-enhanced Groq Chat")
+    st.title("RAG-enhanced Groq Chat with Llama3")
 
     model_selector = ModelSelector()
     selected_model = model_selector.select()
 
     message_manager = Message()
-    rag = RAG("vectorstore")  # This will create the vectorstore if it doesn't exist
+    rag = RAG("vectorstore")
 
     user_input = st.text_input("Enter your question:")
 
@@ -112,10 +104,12 @@ def main():
         message_manager.display_chat_history()
 
         with st.spinner("Generating response..."):
-            rag_response = rag.get_response(user_input, selected_model)
+            relevant_docs = rag.get_relevant_context(user_input)
+            context = "\n".join([doc.page_content for doc in relevant_docs])
+            
             groq_api = GroqAPI(selected_model)
             
-            context_message = f"Context: {rag_response['source_documents']}\n\nHuman: {user_input}\n\nAI:"
+            context_message = f"Context: {context}\n\nHuman: {user_input}\n\nAI:"
             full_response = message_manager.display_stream(groq_api.response_stream([{"role": "user", "content": context_message}]))
 
         message_manager.add("assistant", full_response)
