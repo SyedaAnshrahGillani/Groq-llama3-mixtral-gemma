@@ -1,14 +1,11 @@
-import os  # To interact with the operating system and environment variables.
-import streamlit as st  # To create and run interactive web applications directly through Python scripts.
-from pathlib import Path  # To provide object-oriented filesystem paths, enhancing compatibility across different operating systems.
-from dotenv import load_dotenv  # To load environment variables from a .env file into the system's environment for secure and easy access.
-from groq import Groq  # To interact with Groq's API for executing machine learning models and handling data operations.
-import faiss  # For handling FAISS index for similarity search.
-import pickle  # For loading your pre-trained model or data.
-import numpy as np  # For numerical operations (e.g., handling vectors).
-from langchain.embeddings import OpenAIEmbeddings  # Assuming you're using OpenAI embeddings (or replace with your own).
-from langchain.vectorstores import FAISS  # For loading FAISS vector store.
-  # Import your logging decorator.
+import os
+import streamlit as st
+from pathlib import Path
+from dotenv import load_dotenv
+from groq import Groq  # Groq API for interacting with models
+import faiss  # For similarity search with FAISS
+import pickle  # To load the vector store
+from langchain.prompts import PromptTemplate  # Template for handling prompt with context
 
 # Load environment variables from .env at the project root
 project_root = Path(__file__).resolve().parent
@@ -20,7 +17,6 @@ class GroqAPI:
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.model_name = model_name
 
-    # Internal method to fetch responses from the Groq API
     def _response(self, message):
         return self.client.chat.completions.create(
             model=self.model_name,
@@ -31,8 +27,7 @@ class GroqAPI:
             stop=None,
         )
 
-    # Generator to stream responses from the API
-    def response_stream(self, message):
+    def response_stream(self, message):        
         for chunk in self._response(message):
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
@@ -62,86 +57,72 @@ class Message:
 class ModelSelector:
     """Allows the user to select a model from a predefined list."""
     def __init__(self):
-        self.models = ["llama-3.2-1b-preview", "llama-3.2-3b-preview", "llama-3.2-11b-vision-preview"]
+        self.models = ["llama3-70b-8192", "llama3-8b-8192", "mixtral-8x7b-32768", "gemma-7b-it"]
 
     def select(self):
         with st.sidebar:
             st.sidebar.title("Groq Chat with Llama3 + α")
             return st.selectbox("Select a model:", self.models)
 
-class RAG:
-    """Handles Retrieval-Augmented Generation operations."""
-    def __init__(self, vectorstore_path: str):
-        # Load the FAISS vector store
-        self.__embedding_function = OpenAIEmbeddings()  # Use your embedding function here
-        self.db = FAISS.load_local(vectorstore_path, self.__embedding_function, allow_dangerous_deserialization=True)
-        self.__base_retriever = self.db.as_retriever(search_kwargs={"k": 40})
+class FAISSHandler:
+    """Handles FAISS-based similarity search using prebuilt index and vectors."""
+    def __init__(self, vector_store_path):
+        self.vector_store_path = vector_store_path
+        self.index = self._load_faiss_index()
+        self.documents = self._load_documents()
 
-    @log_runtime()
-    async def retrieve_and_rerank(self, search_phrase: str):
-        """Retrieve and rerank documents based on the search phrase."""
-        documents = await self.retrieve_documents(search_phrase)
-        if len(documents) == 0:  # to avoid empty API call
-            return []
-        
-        docs = [doc.page_content for doc in documents if isinstance(doc, Document)]
-        api_result = await self.make_rerank_api_call(search_phrase, docs)
+    def _load_faiss_index(self):
+        index_path = os.path.join(self.vector_store_path, "faiss.index")
+        return faiss.read_index(index_path)
 
-        reranked_index = [res.index for res in api_result.results]
-        from base_logger import logger
-        logger.info(f"Cohere Reranking: {str(reranked_index)}")
-        
-        reranked_docs = []
-        complete_text_tracker = []
-        for res in api_result.results:
-            doc = documents[res.index]
-            if doc.metadata['complete_text'] in complete_text_tracker:
-                continue
-            documentItem = VectorStoreDocumentItem(
-                page_content=doc.metadata['complete_text'],
-                filename=doc.metadata['filename'],
-                heading=doc.metadata['heading'],
-                relevance_score=res.relevance_score
-            )
-            reranked_docs.append(documentItem)
-            complete_text_tracker.append(doc.metadata['complete_text'])
-            
-        return reranked_docs
+    def _load_documents(self):
+        with open(os.path.join(self.vector_store_path, "documents.pkl"), "rb") as f:
+            return pickle.load(f)
 
-    async def retrieve_documents(self, search_phrase: str):
-        """Retrieve documents based on a search phrase."""
-        return await self.__base_retriever.retrieve(search_phrase)
+    def search(self, query_vector, top_k=3):
+        """Perform similarity search on the vector store."""
+        distances, indices = self.index.search(query_vector, top_k)
+        return [self.documents[i] for i in indices[0]]
 
-    async def make_rerank_api_call(self, search_phrase: str, docs: list):
-        """Call the API for reranking."""
-        # Implement the API call logic here
-        pass  # Replace with your API call logic.
-
-# Entry point for the Streamlit app
 def main():
-    user_input = st.text_input("Enter message to AI models...")
+    st.title("Korean RAG Chatbot")
+
+    # Input user message
+    user_input = st.text_input("Enter your question...")
+
+    # Select model
     model_selector = ModelSelector()
     selected_model = model_selector.select()
 
+    # Initialize message handling
     message = Message()
 
-    # Initialize the RAG system with the path to the vector store
-    rag = RAG("vectorstore")  # Update the path to your FAISS vector store
+    # Load FAISS and vector store
+    vector_store_path = "./vector_store"
+    faiss_handler = FAISSHandler(vector_store_path)
 
+    # If the user enters a query
     if user_input:
+        # 1. Convert user query to vector (this assumes vectorization is already handled)
+        # For demo purposes, assume it's done and we use some dummy vector here
+        query_vector = faiss.vector_to_array(faiss_handler.index)
+
+        # 2. Perform similarity search on the FAISS index
+        relevant_docs = faiss_handler.search(query_vector)
+
+        # 3. Prepare the prompt for the language model
+        context = "\n".join(relevant_docs)
+        prompt_template = PromptTemplate(
+            input_variables=["context", "question"],
+            template="Context: {context}\nQuestion: {question}\nAnswer in Korean:"
+        )
+        prompt = prompt_template.render(context=context, question=user_input)
+
+        # 4. Send the final prompt to GroqAPI and get response
         llm = GroqAPI(selected_model)
-
-        # Retrieve and rerank relevant context based on user input
-        retrieved_contexts = rag.retrieve_and_rerank(user_input)
-        context = "\n".join([doc.page_content for doc in retrieved_contexts])  # Assuming retrieved_contexts is a list of document items.
-
-        # Add context to the message for prompt engineering
-        enhanced_message = [{"role": "system", "content": "Generate a response in Korean based on the following context:\n" + context},
-                            {"role": "user", "content": user_input}]
-        
         message.add("user", user_input)
         message.display_chat_history()
-        response = message.display_stream(llm.response_stream(enhanced_message))
+        response = message.display_stream(llm.response_stream([{"role": "user", "content": prompt}]))
         message.add("assistant", response)
 
 if __name__ == "__main__":
