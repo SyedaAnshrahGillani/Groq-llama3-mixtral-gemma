@@ -6,3 +6,4 @@ faiss-cpu # Replace with the appropriate version for your system
 langchain  # Adjust to the correct version of Langchain
 numpy  # Or the version you need
 langchain-community
+sentence-transformers
