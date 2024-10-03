@@ -11,7 +11,10 @@ load_dotenv(project_root / ".env")
 class GroqAPI:
     """Handles API operations with Groq to generate chat responses."""
     def __init__(self, model_name: str):
-        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        groq_api_key = os.getenv("GROQ_API_KEY")
+        if not groq_api_key:
+            raise ValueError("GROQ_API_KEY not found in environment variables.")
+        self.client = Groq(api_key=groq_api_key)
         self.model_name = model_name
 
 # Internal method to fetch responses from the Groq API
