@@ -1,69 +1,120 @@
-from sentence_transformers import SentenceTransformer
-import numpy as np
+import os  # To interact with the operating system and environment variables.
+import streamlit as st  # To create and run interactive web applications directly through Python scripts.
+from pathlib import Path  # To provide object-oriented filesystem paths, enhancing compatibility across different operating systems.
+from dotenv import load_dotenv  # To load environment variables from a .env file into the system's environment.
+from groq import Groq  # To interact with Groq's API for executing machine learning models and handling data operations.
+import pickle  # To load the saved FAISS index
+import faiss  # To perform similarity search using FAISS
+from sentence_transformers import SentenceTransformer  # To encode the query for vector search
 
-class FAISSHandler:
-    """Handles FAISS-based similarity search using prebuilt index and vectors."""
-    def __init__(self, vector_store_path):
-        self.vector_store_path = vector_store_path
-        self.index = self._load_faiss_index()
-        self.documents = self._load_documents()
-        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')  # Example model
+# Load environment variables from .env at the project root
+project_root = Path(__file__).resolve().parent
+load_dotenv(project_root / ".env")
 
-    def _load_faiss_index(self):
-        index_path = os.path.join(self.vector_store_path, "index.faiss")
-        return faiss.read_index(index_path)
+# Load FAISS index and associated metadata
+index_path = project_root / "vectorstore/index.faiss"
+meta_path = project_root / "vectorstore/index.pkl"
+faiss_index = faiss.read_index(str(index_path))
 
-    def _load_documents(self):
-        with open(os.path.join(self.vector_store_path, "index.pkl"), "rb") as f:
-            return pickle.load(f)
+with open(meta_path, 'rb') as f:
+    metadata = pickle.load(f)  # Metadata includes texts or documents
 
-    def vectorize_query(self, query):
-        """Convert a user query to a vector using the embedding model."""
-        return self.embedding_model.encode([query])
+# Load sentence transformer model for encoding the query
+embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-    def search(self, query_vector, top_k=3):
-        """Perform similarity search on the vector store."""
-        distances, indices = self.index.search(query_vector, top_k)
-        return [self.documents[i] for i in indices[0]]
+class GroqAPI:
+    """Handles API operations with Groq to generate chat responses."""
+    def __init__(self, model_name: str):
+        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        self.model_name = model_name
+
+    # Internal method to fetch responses from the Groq API
+    def _response(self, message):
+        return self.client.chat.completions.create(
+            model=self.model_name,
+            messages=message,
+            temperature=0,
+            max_tokens=4096,
+            stream=True,
+            stop=None,
+        )
+
+    # Generator to stream responses from the API
+    def response_stream(self, message):
+        for chunk in self._response(message):
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+
+class Message:
+    """Manages chat messages within the Streamlit UI."""
+    system_prompt = "You are a professional AI. Please generate responses in English to all user inputs."
+
+    # Initialize chat history if it doesn't exist in session state
+    def __init__(self):
+        if "messages" not in st.session_state:
+            st.session_state.messages = [{"role": "system", "content": self.system_prompt}]
+
+    # Add a new message to the session state
+    def add(self, role: str, content: str):
+        st.session_state.messages.append({"role": role, "content": content})
+
+    # Display all past messages in the UI, skipping system messages
+    def display_chat_history(self):
+        for message in st.session_state.messages:
+            if message["role"] == "system":
+                continue
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+    # Stream API responses to the Streamlit chat message UI
+    def display_stream(self, generator):
+        with st.chat_message("assistant"):
+            return st.write_stream(generator)
+
+class ModelSelector:
+    """Allows the user to select a model from a predefined list."""
+    def __init__(self):
+        # List of available models to choose from
+        self.models = ["llama-3.2-1b-preview", "llama-3.2-3b-preview", "llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
+
+    # Display model selection in a sidebar with a title
+    def select(self):
+        with st.sidebar:
+            st.sidebar.title("Groq Chat with Llama3 + α")
+            return st.selectbox("Select a model:", self.models)
+
+def perform_faiss_search(query):
+    """Perform FAISS similarity search on the vector store using the user's query."""
+    query_vector = embedding_model.encode([query])  # Encode the query into a vector
+    D, I = faiss_index.search(query_vector, k=5)  # Perform the search, returning the top 5 similar documents
+    results = [metadata[i] for i in I[0]]  # Retrieve documents based on the search result indices
+    return results
 
 def main():
-    st.title("Korean RAG Chatbot")
+    user_input = st.text_input("Enter message to AI models...")
+    model = ModelSelector()
+    selected_model = model.select()
 
-    # Input user message
-    user_input = st.text_input("Enter your question...")
-
-    # Select model
-    model_selector = ModelSelector()
-    selected_model = model_selector.select()
-
-    # Initialize message handling
     message = Message()
 
-    # Load FAISS and vector store
-    vector_store_path = "./vectorstore"  # Path to the vector store directory
-    faiss_handler = FAISSHandler(vector_store_path)
-
-    # If the user enters a query
+    # If there's user input, perform FAISS search and process the context with the selected model
     if user_input:
-        # 1. Convert user query to vector using the embedding model
-        query_vector = faiss_handler.vectorize_query(user_input)
-
-        # 2. Perform similarity search on the FAISS index
-        relevant_docs = faiss_handler.search(np.array(query_vector))
-
-        # 3. Prepare the prompt for the language model
-        context = "\n".join(relevant_docs)
-        prompt_template = PromptTemplate(
-            input_variables=["context", "question"],
-            template="Context: {context}\nQuestion: {question}\nAnswer in Korean:"
-        )
-        prompt = prompt_template.render(context=context, question=user_input)
-
-        # 4. Send the final prompt to GroqAPI and get response
         llm = GroqAPI(selected_model)
-        message.add("user", user_input)
+
+        # Perform similarity search using FAISS
+        similar_contexts = perform_faiss_search(user_input)
+
+        # Combine the similar context into a single string to pass to the LLM
+        context = "\n".join(similar_contexts)
+        st.write("Retrieved Context for your query:", context)  # Show the retrieved context
+
+        # Add the user message and retrieved context to the prompt
+        prompt = f"Context: {context}\n\nQuestion: {user_input}"
+        message.add("user", prompt)
         message.display_chat_history()
-        response = message.display_stream(llm.response_stream([{"role": "user", "content": prompt}]))
+
+        # Pass the message with context to the model and stream the response
+        response = message.display_stream(llm.response_stream(st.session_state.messages))
         message.add("assistant", response)
 
 if __name__ == "__main__":
