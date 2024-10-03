@@ -1,89 +1,115 @@
-import os  # To interact with the operating system and environment variables.
-import streamlit as st  # To create and run interactive web applications directly through Python scripts.
-from pathlib import Path  # To provide object-oriented filesystem paths, enhancing compatibility across different operating systems.
-from dotenv import load_dotenv  # To load environment variables from a .env file into the system's environment for secure and easy access.
-from groq import Groq  # To interact with Groq's API for executing machine learning models and handling data operations.
+import streamlit as st
+import os
+from langchain_groq import ChatGroq
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_community.vectorstores import Chroma
+from langchain.vectorstores import FAISS
+import time
 
-# Load environment variables from .env at the project root
-project_root = Path(__file__).resolve().parent
-load_dotenv(project_root / ".env")
+from dotenv import load_dotenv
+load_dotenv()
 
-class GroqAPI:
-    """Handles API operations with Groq to generate chat responses."""
-    def __init__(self, model_name: str):
-        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model_name = model_name
+#Loading the groq api key
+groq_api_key = os.getenv('GROQ_API_KEY')
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
-# Internal method to fetch responses from the Groq API
-    def _response(self, message):
-        return self.client.chat.completions.create(
-            model=self.model_name,
-            messages=message,
-            temperature=0,
-            max_tokens=4096,
-            stream=True,
-            stop=None,
-        )
 
-# Generator to stream responses from the API
-    def response_stream(self, message):        
-        for chunk in self._response(message):
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+#Defining tools
 
-class Message:
-    """Manages chat messages within the Streamlit UI."""
-    system_prompt = "You are a professional AI. Please generate responses in English to all user inputs."
+# Tool 1: Wikipedia Tool
+from langchain_community.tools import WikipediaQueryRun
+from langchain_community.utilities import WikipediaAPIWrapper
 
-# Initialize chat history if it doesn't exist in session state
-    def __init__(self):
-        if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "system", "content": self.system_prompt}]
+wiki_wrapper = WikipediaAPIWrapper(top_k_results = 1, doc_content_chars_max=10000)
+wiki = WikipediaQueryRun(api_wrapper = wiki_wrapper)
 
-# Add a new message to the session state
-    def add(self, role: str, content: str):
-        st.session_state.messages.append({"role": role, "content": content})
 
-# Display all past messages in the UI, skipping system messages
-    def display_chat_history(self):
-        for message in st.session_state.messages:
-            if message["role"] == "system":
-                continue
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
 
-# Stream API responses to the Streamlit chat message UI
-    def display_stream(self, generater):
-        with st.chat_message("assistant"):
-            return st.write_stream(generater)
 
-class ModelSelector:
-    """Allows the user to select a model from a predefined list."""
-    def __init__(self):
-        # List of available models to choose from
-        self.models = ["llama3-70b-8192","llama3-8b-8192","mixtral-8x7b-32768","gemma-7b-it"]
+#Tool 2: PDF Search Tool
+loader = PyPDFDirectoryLoader("./us_census_data")
+docs = loader.load()
 
-# Display model selection in a sidebar with a title
-    def select(self):
-        with st.sidebar:
-            st.sidebar.title("Groq Chat with Llama3 + α")
-            return st.selectbox("Select a model:", self.models)
+#Splitting the content into chunks
+documents = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100).split_documents(docs)
 
-# Entry point for the Streamlit app
-def main():
-    user_input = st.text_input("Enter message to AI models...")
-    model = ModelSelector()
-    selected_model = model.select()
+#Storing chunks into vector DB
+#vectordb = Chroma.from_documents(documents, OpenAIEmbeddings())
+vectordb = FAISS.from_documents(documents, OpenAIEmbeddings())
 
-    message = Message()
+#Retriever
+retriever = vectordb.as_retriever()
 
-# If there's user input, process it through the selected model
-    if user_input:
-        llm = GroqAPI(selected_model)
-        message.add("user", user_input)
-        message.display_chat_history()
-        response = message.display_stream(llm.response_stream(st.session_state.messages))
-        message.add("assistant", response)
+from langchain.tools.retriever import create_retriever_tool
+pdf_tool = create_retriever_tool(retriever, "pdf_search",
+                     "Search for information about US census data. For any questions about US census data, you must use this tool first!")
 
-if __name__ == "__main__":
-    main()
+
+
+#Tool 3: Arxiv tool
+from langchain_community.utilities import ArxivAPIWrapper
+from langchain_community.tools import ArxivQueryRun
+
+arxiv_wrapper = ArxivAPIWrapper(top_k_results=1, doc_content_chars_max=10000)
+arxiv = ArxivQueryRun(api_wrapper=arxiv_wrapper)
+
+
+tools = [wiki, arxiv, pdf_tool]
+
+
+#Streamlit setup
+st.title("Chatbot using Groq")
+llm = ChatGroq(groq_api_key=groq_api_key, model_name="llama3-8b-8192")
+
+
+#Prompt
+prompt = ChatPromptTemplate.from_template(
+"""
+Answer the questions based on the provided context only.
+Please provide the most accurate and a detailed response based on the question
+<context>
+{context}
+<context>
+Questions:{input}
+{agent_scratchpad}
+"""
+)
+
+# Agent Setup
+from langchain.agents import create_openai_tools_agent
+agent = create_openai_tools_agent(llm, tools, prompt)
+
+# Agent Executer
+from langchain.agents import AgentExecutor
+agent_executor = AgentExecutor(agent = agent, tools = tools, verbose = True)
+
+
+query = st.text_input("Input your query here")
+
+if (st.button("Get Answer") or query):
+    start_overall = time.time()
+    start_llm = time.process_time()
+    #response = agent_executor.invoke({"input": query})
+    try:
+        response = agent_executor.invoke({
+            "input": query,
+            "context": "",
+            "agent_scratchpad": ""
+        })
+        response_time_overall = time.time() - start_overall
+        response_time_llm = time.process_time() - start_llm
+        st.write(response['output'])
+        #st.write(f"Response time: {response_time} seconds")
+        st.markdown(f"<p style='color:blue;'>Overall Response Time: {response_time_overall} seconds</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:blue;'>LLM Response Time: {response_time_llm} seconds</p>", unsafe_allow_html=True)
+
+    except Exception as e:
+        #st.markdown(f"<p style='color:red;'>Please enter a valid query!</p>", unsafe_allow_html=True)
+        st.write(f"An error occurred: {e}")
+        
+else:
+    st.write("Please enter a query")

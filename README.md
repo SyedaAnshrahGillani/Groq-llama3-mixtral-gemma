@@ -1,44 +1,82 @@
-# Llama3-Groq-Streamlit Chat Application
-This project showcases a chat application built with Streamlit that integrates Llama3 models via the Groq platform. It's designed to offer speedy real-time AI-driven chat functionalities, making the most of Llama3's capabilities within an interactive web interface.
+# RAG-Chatbot-using-Groq
+
+## Overview
+
+Welcome to the RAG Chatbot project! This chatbot leverages the LangChain framework and integrates multiple tools to provide accurate and detailed responses to user queries. By combining the power of the Groq inference engine, the open-source Llama-3 model, and ChromaDB, this chatbot ensures high performance and versatility in information retrieval.
 
 ## Features
-- **Llama3 Integration**: Leverages the Llama3 and other major models, such as Mixtral and Gemma, to provide intelligent and context-aware responses.
-- **Groq Platform**: Utilizes Groq's powerful computation capabilities to ensure fast and efficient model responses.
-- **Streamlit Interface**: Offers a user-friendly web interface that allows users to interact with the AI dynamically.
-- **Real-Time Responses**: Engineered to handle user inputs and deliver AI responses in real time.
+
+- **Groq Inference Engine**: Ensures rapid response times for inference.
+- **Llama-3 Model**: Utilizes an open-source large language model for generating responses.
+- **ChromaDB**: Serves as the vector database for storing and retrieving embeddings.
+- **Wikipedia Tool**: Searches Wikipedia for relevant information.
+- **PDF Search Tool**: Retrieves information from PDF documents.
+- **Arxiv Tool**: Provides information about research papers from Arxiv.
 
 ## Technologies Used
-- Python 3.x
-- Streamlit
-- Groq API
-- dotenv for environment management
 
-## Getting Started
+- **LangChain**: Framework for building language model applications.
+- **Streamlit**: For building an interactive web interface.
+- **PyPDFDirectoryLoader**: To load and process PDF documents.
+- **OpenAIEmbeddings**: For creating and managing embeddings.
+- **RecursiveCharacterTextSplitter**: For splitting documents into manageable chunks.
+- **Chroma**: Vector database for efficient document retrieval.
+- **WikipediaAPIWrapper**: Utility for interacting with the Wikipedia API.
+- **ArxivAPIWrapper**: Utility for interacting with the Arxiv API.
 
-### Prerequisites
-Ensure you have Python 3.6 or higher installed on your system. Streamlit and other required packages will be installed via the requirements file.
 
-### Installation
+### Setup
 
-1. Install the required Python packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
+1. **Clone the Repository**
 
-## Configuration
-### Obtaining a Groq API Key
-To use this application, you'll need an API key from Groq. Visit the [Groq API documentation](https://console.groq.com/docs/quickstart) to learn how to obtain one.
+   ```bash
+   git clone https://github.com/NikhilAdvani/RAG-Chatbot-using-Groq.git
+   ```
 
-### Setting Up Your Environment
-Once you have your API key, you need to set it in your environment:
-- Rename `.env.example` to `.env`.
-- Open the `.env` file and replace `YOUR_API_KEY_HERE` with your Groq API key.
+2. **Create a Virtual Environment**
 
-This step is crucial for the application to interact with Groq's services securely.
+   ```bash
+   python -m venv venv
+   ```
 
-## Running the Application
-To run the application, use the following command:
-    ```bash
-    streamlit run main.py
-    ```
+3. **Install the required packages**
 
+4. **Set Up Environment Variables**
+
+   Create a `.env` file in the root directory and add your Groq API key:
+
+   ```env
+   GROQ_API_KEY = your_groq_api_key
+   ```
+
+5. **Run the Application**
+
+   ```bash
+   streamlit run main.py
+   ```
+
+## Usage
+
+1. Open your browser and navigate to `http://localhost:8501`.
+2. Enter your query in the input box and click "Get Answer".
+3. The chatbot will process your query using the appropriate tool and display the response along with the response time.
+
+## Project Structure
+
+- `main.py`: Main application file containing the Streamlit setup and chatbot logic.
+- `us_census_data/`: Directory containing PDF documents for the PDF search tool.
+- `.env`: File to store environment variables.
+  
+```
+
+## Contributing
+
+Contributions/feedbacks are welcome! Please feel free to submit a Pull Request or open an issue for any bugs or feature requests.
+
+## Acknowledgments
+
+- A big thank you to Krish Naik's youtube tutorials (https://www.youtube.com/@krishnaik06) for guiding me through this project.
+- Thanks to the LangChain community for providing the tools and support for building this project.
+- Special thanks to Groq for their high-performance inference engine.
+
+---
