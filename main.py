@@ -67,7 +67,7 @@ class ModelSelector:
 class FAISSHandler:
     """Handles FAISS-based similarity search using prebuilt index and vectors."""
     def __init__(self, vector_store_path):
-        self.vector_store_path = vectorstore
+        self.vector_store_path = vectorstorepath
         self.index = self._load_faiss_index()
         self.documents = self._load_documents()
 
@@ -98,7 +98,7 @@ def main():
     message = Message()
 
     # Load FAISS and vector store
-    vector_store_path = "./vector_store"
+    vectorstorepath = "./vectorstore"
     faiss_handler = FAISSHandler(vector_store_path)
 
     # If the user enters a query
