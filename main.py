@@ -65,7 +65,7 @@ class ModelSelector:
             return st.selectbox("Select a model:", self.models)
 
 def load_vector_store():
-    vector_store_path = Path("vectorstore/faiss_index.pkl")  # Adjust the path as necessary
+    vector_store_path = Path("vectorstore/index.pkl")  # Adjust the path as necessary
     with open(vector_store_path, "rb") as f:
         vector_store = pickle.load(f)
         
