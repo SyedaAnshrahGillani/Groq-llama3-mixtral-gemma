@@ -25,11 +25,11 @@ if 'chain' not in st.session_state:
 ## Introduction
 user_input = st.chat_input("Ask a question:")
 if user_input:
-    st.session_state.chat_history.append(('role': 'user', 'content': user_input))
+    st.session_state.chat_history.append({'role': 'user', 'content': user_input})
 
     # Get response from the chain
-    response = st.session_state.chain(('question': user_input))
-    st.session_state.chat_history.append(('role': 'assistant', 'content': response['answer']))
+    response = st.session_state.chain({'question': user_input})
+    st.session_state.chat_history.append({'role': 'assistant', 'content': response['answer']})
 
 ## Introduction
 for message in st.session_state.chat_history:
