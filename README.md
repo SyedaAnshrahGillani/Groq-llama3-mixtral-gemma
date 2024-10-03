@@ -1,82 +1,126 @@
-# RAG-Chatbot-using-Groq
+# Document QnA with Llama3, Groq API, LangChain, and Streamlit
 
-## Overview
+Welcome to the **Document QnA** project! This project leverages the power of Llama3 and Groq API, integrated with LangChain, FAISS, Google Palm Embeddings, and deployed on Streamlit, to provide an interactive question-and-answer system based on document content.
 
-Welcome to the RAG Chatbot project! This chatbot leverages the LangChain framework and integrates multiple tools to provide accurate and detailed responses to user queries. By combining the power of the Groq inference engine, the open-source Llama-3 model, and ChromaDB, this chatbot ensures high performance and versatility in information retrieval.
+### Streamlit UI:
+![](https://github.com/2003HARSH/Document-QnA-using-Llama3-and-Groq/blob/main/docs/static/docqna.png)
+### LangSmith Monitoring:
+![](https://github.com/2003HARSH/Document-QnA-using-Llama3-and-Groq/blob/main/docs/static/langsmith.png)
+
+---
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Technologies Used](#technologies-used)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Introduction
+
+Document QnA is an interactive application that allows users to upload documents and ask questions related to the content of those documents. The system uses advanced language models to understand and respond to user queries accurately, and it can also identify the page number of the PDF where the relevant context is found.
 
 ## Features
 
-- **Groq Inference Engine**: Ensures rapid response times for inference.
-- **Llama-3 Model**: Utilizes an open-source large language model for generating responses.
-- **ChromaDB**: Serves as the vector database for storing and retrieving embeddings.
-- **Wikipedia Tool**: Searches Wikipedia for relevant information.
-- **PDF Search Tool**: Retrieves information from PDF documents.
-- **Arxiv Tool**: Provides information about research papers from Arxiv.
+- **Document Upload**: Easily upload multiple documents for analysis.
+- **Interactive QnA**: Ask questions and receive answers based on the document content.
+- **Page Number Identification**: Find out the page number in the PDF where the context is present.
+- **Relevant Document Identification**: Automatically identify which document contains the relevant answer.
+- **Streamlit Interface**: User-friendly web interface for seamless interaction.
+- **Powered by Llama3 and Groq API**: Utilizes advanced language models for natural language understanding.
+- **Efficient Text Processing**: Uses RecursiveCharacterTextSplitter for effective text handling.
+- **Enhanced Search**: Employs FAISS for efficient similarity search.
+- **Advanced Embeddings**: Uses Google Palm Embeddings for improved text representations.
 
-## Technologies Used
+## Installation
 
-- **LangChain**: Framework for building language model applications.
-- **Streamlit**: For building an interactive web interface.
-- **PyPDFDirectoryLoader**: To load and process PDF documents.
-- **OpenAIEmbeddings**: For creating and managing embeddings.
-- **RecursiveCharacterTextSplitter**: For splitting documents into manageable chunks.
-- **Chroma**: Vector database for efficient document retrieval.
-- **WikipediaAPIWrapper**: Utility for interacting with the Wikipedia API.
-- **ArxivAPIWrapper**: Utility for interacting with the Arxiv API.
+To get started with the Document QnA project, follow these steps:
 
-
-### Setup
-
-1. **Clone the Repository**
-
+1. **Clone the repository:**
    ```bash
-   git clone https://github.com/NikhilAdvani/RAG-Chatbot-using-Groq.git
+   https://github.com/2003HARSH/Document-QnA-using-Llama3-and-Groq.git
+   cd Document-QnA-using-Llama3-and-Groq
    ```
 
-2. **Create a Virtual Environment**
-
+2. **Create a virtual environment:**
    ```bash
    python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
    ```
 
-3. **Install the required packages**
-
-4. **Set Up Environment Variables**
-
-   Create a `.env` file in the root directory and add your Groq API key:
-
-   ```env
-   GROQ_API_KEY = your_groq_api_key
-   ```
-
-5. **Run the Application**
-
+3. **Install dependencies:**
    ```bash
-   streamlit run main.py
+   pip install -r requirements.txt
+   ```
+
+4. **Set up environment variables:**
+   Create a `.env` file in the project root directory and add your API keys and necessary configurations.
+   ```env
+   GROQ_API_KEY=your_groq_api_key
+   GOOGLE_PALM_API_KEY=your_google_palm_api_key
    ```
 
 ## Usage
 
-1. Open your browser and navigate to `http://localhost:8501`.
-2. Enter your query in the input box and click "Get Answer".
-3. The chatbot will process your query using the appropriate tool and display the response along with the response time.
+1. **Run the Streamlit application:**
+   ```bash
+   streamlit run app.py
+   ```
 
-## Project Structure
+2. **Upload documents:**
+   - Go to the running Streamlit app in your web browser.
+   - Use the document upload feature to upload one or more documents.
 
-- `main.py`: Main application file containing the Streamlit setup and chatbot logic.
-- `us_census_data/`: Directory containing PDF documents for the PDF search tool.
-- `.env`: File to store environment variables.
-  
-```
+3. **Ask questions:**
+   - Enter your questions in the provided text box.
+   - Get answers based on the content of the uploaded documents, along with the page number and document name where the context is found.
+4. **Don't want to install, try it out here** https://document-qna-using-llama3-and-groq.streamlit.app/
+
+## Configuration
+
+Ensure your `.env` file is correctly set up with the required API keys. The application relies on these keys to interact with Llama3, Groq API, and other services for processing and generating responses.
+
+## Technologies Used
+
+- **Llama3**: Advanced language model for natural language processing.
+- **Groq API**: Powerful API providing faster inference to language models.
+- **LangChain**: Framework for building applications with language models.
+- **FAISS**: Efficient similarity search.
+- **Google Palm Embeddings**: Advanced embeddings for improved text representation.
+- **RecursiveCharacterTextSplitter**: Tool for effective text handling.
+- **Streamlit**: Fast way to build and share data apps.
 
 ## Contributing
 
-Contributions/feedbacks are welcome! Please feel free to submit a Pull Request or open an issue for any bugs or feature requests.
+Contributions are welcome! Please follow these steps to contribute:
 
-## Acknowledgments
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/your-feature`).
+3. Commit your changes (`git commit -m 'Add some feature'`).
+4. Push to the branch (`git push origin feature/your-feature`).
+5. Open a pull request.
 
-- A big thank you to Krish Naik's youtube tutorials (https://www.youtube.com/@krishnaik06) for guiding me through this project.
-- Thanks to the LangChain community for providing the tools and support for building this project.
-- Special thanks to Groq for their high-performance inference engine.
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
+
+Feel free to reach out if you have any questions or need further assistance. Happy coding!
+
+---
+
+## Contact
+
+- **Author**: Harsh Gupta
+- **Email**: harshnkgupta@gmail.com
+- **GitHub**: [@2003HARSH](https://github.com/2003HARSH)
+
+---
+
+Thank you for using Document QnA! We hope it enhances your document analysis and interaction experience.
+
