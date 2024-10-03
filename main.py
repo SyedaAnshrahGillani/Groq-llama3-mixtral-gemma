@@ -3,12 +3,12 @@ import streamlit as st
 from pathlib import Path
 from dotenv import load_dotenv
 from groq import Groq
-from langchain.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
-from langchain.llms import HuggingFaceHub
+from langchain_community.llms import HuggingFaceHub
 
 # Load environment variables from .env at the project root
 project_root = Path(__file__).resolve().parent
@@ -70,9 +70,22 @@ class ModelSelector:
 class RAG:
     """Handles Retrieval-Augmented Generation using FAISS."""
     def __init__(self, index_path: str, embeddings_model: str = "sentence-transformers/all-MiniLM-L6-v2"):
+        self.index_path = Path(index_path)
         self.embeddings = HuggingFaceEmbeddings(model_name=embeddings_model)
-        self.vectorstore = FAISS.load_local(index_path, self.embeddings)
+        self.vectorstore = self.load_or_create_vectorstore()
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+
+    def load_or_create_vectorstore(self):
+        if self.index_path.exists():
+            return FAISS.load_local(str(self.index_path), self.embeddings)
+        else:
+            # Create a simple document if the index doesn't exist
+            documents = ["This is a placeholder document for the FAISS index."]
+            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+            texts = text_splitter.create_documents(documents)
+            vectorstore = FAISS.from_documents(texts, self.embeddings)
+            vectorstore.save_local(str(self.index_path))
+            return vectorstore
 
     def get_response(self, query: str, model_name: str):
         llm = HuggingFaceHub(repo_id=model_name, model_kwargs={"temperature": 0.5, "max_length": 512})
@@ -90,7 +103,7 @@ def main():
     selected_model = model_selector.select()
 
     message_manager = Message()
-    rag = RAG("vectorstore")  # Update this path to your FAISS index location
+    rag = RAG("vectorstore")  # This will create the vectorstore if it doesn't exist
 
     user_input = st.text_input("Enter your question:")
 
