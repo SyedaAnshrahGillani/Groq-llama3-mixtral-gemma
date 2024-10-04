@@ -83,7 +83,7 @@ retriever_type = st.selectbox("Select retriever type", ["SIMILARITY SEARCH", "SU
 embedding_option = st.selectbox("Select embedding option", ["OpenAI Embeddings", "HuggingFace Embeddings (slower)"])
 
 # Add model selection dropdown
-models = ["llama-3.2-1b-preview", "llama-3.2-3b-preview", "llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
+models = ["llama-3.2-1b-preview", "llama-3.2-3b-preview", "llama-3.2-11b-vision-preview"]
 selected_model = st.selectbox("Select model for chat completion", models)
 
 if uploaded_files:
