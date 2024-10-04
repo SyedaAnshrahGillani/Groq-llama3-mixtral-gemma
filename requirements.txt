@@ -6,3 +6,11 @@ python-dotenv==1.0.0
 google-generativeai
 pypdf
 faiss-cpu
+streamlit
+PyPDF2
+Pillow
+langchain
+openai
+transformers
+groq # Replace with the correct version if available
+
