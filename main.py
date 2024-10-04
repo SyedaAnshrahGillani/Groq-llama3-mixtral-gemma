@@ -58,20 +58,19 @@ def split_texts(text, chunk_size, overlap):
         st.stop()
     return splits
 
-def get_groq_response(user_query, context):
+def get_groq_response(user_query, context, model):
     # Create the messages for Groq completion
     messages = [
-    {
-        "role": "user",
-        "content": f"As a helpful assistant, answer the user's question if it's in the context. CONTEXT: {context} USER QUERY: {user_query}"
-    }
-]
+        {
+            "role": "user",
+            "content": f"As a helpful assistant, answer the user's question if it's in the context. CONTEXT: {context} USER QUERY: {user_query}"
+        }
+    ]
 
-
-    # Use the Groq client to get the completion
+    # Use the Groq client to get the completion with the selected model
     chat_completion = client.chat.completions.create(
         messages=messages,
-        model="llama3-8b-8192",
+        model=model,
     )
     
     return chat_completion.choices[0].message.content
@@ -82,6 +81,10 @@ chunk_size = st.slider("Select chunk size", 100, 2000, 1000)
 overlap = st.slider("Select overlap size", 0, 100, 0)
 retriever_type = st.selectbox("Select retriever type", ["SIMILARITY SEARCH", "SUPPORT VECTOR MACHINES"])
 embedding_option = st.selectbox("Select embedding option", ["OpenAI Embeddings", "HuggingFace Embeddings (slower)"])
+
+# Add model selection dropdown
+models = ["llama-3.2-1b-preview", "llama-3.2-3b-preview", "llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
+selected_model = st.selectbox("Select model for chat completion", models)
 
 if uploaded_files:
     loaded_text = load_docs(uploaded_files)
@@ -107,8 +110,8 @@ if uploaded_files:
         matched_info = ' '.join([doc.page_content for doc in result])
         context = f"Information: {matched_info}"
         
-        # Generate response using Groq
-        response = get_groq_response(user_query, context)
+        # Generate response using Groq with the selected model
+        response = get_groq_response(user_query, context, selected_model)
         
         st.write("Response:")
         st.write(response)  # Display response in Korean (Groq will handle it)
