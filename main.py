@@ -1,41 +1,28 @@
-import streamlit as st
-from langchain_utils import get_pdf_text, get_text_chunks, get_vector_store,user_input
+ if uploaded_files:
+        # Check if last_uploaded_files is not in session_state or if uploaded_files are different from last_uploaded_files
+        if 'last_uploaded_files' not in st.session_state or st.session_state.last_uploaded_files != uploaded_files:
+            st.session_state.last_uploaded_files = uploaded_files
+            if 'eval_set' in st.session_state:
+                del st.session_state['eval_set']
 
-st.set_page_config(page_icon='📚',
-                   page_title="Document📃 QnA🙋‍♂️ using Groq",                  
-)
+        # Load and process the uploaded PDF or TXT files.
+        loaded_text = load_docs(uploaded_files)
+        st.write("Documents uploaded and processed.")
 
-GOOGLEPALM_API_KEY=st.secrets['google_palm']
-GROQ_API_KEY=st.secrets['groq_api']
+        # Split the document into chunks
+        splits = split_texts(loaded_text, chunk_size=1000,
+                             overlap=0, split_method=splitter_type)
 
-def main():
-    st.header("Document📃 QnA💁 using Llama3 and Groq⏩")
-    st.write("Please don't❌ upload any private Documents...")
-    st.markdown("""---""")
-    user_question = st.text_input("Ask a Question from the PDF Files")
+        # Display the number of text chunks
+        num_chunks = len(splits)
+        st.write(f"Number of text chunks: {num_chunks}")
 
-    if st.button('Generate Answer'):
-        if user_question:
-            output=user_input(user_question,GROQ_API_KEY,GOOGLEPALM_API_KEY)
-            st.write(output[0])
-            document=output[1]
-            for i in range(len(document)):
-                st.markdown("""---""")
-                st.write("Source Document:",document[i].metadata['source'])
-                st.write("From Page Number:",document[i].metadata['page'])
+        # Embed using OpenAI embeddings
+            # Embed using OpenAI embeddings or HuggingFace embeddings
+        if embedding_option == "OpenAI Embeddings":
+            embeddings = OpenAIEmbeddings()
+        elif embedding_option == "HuggingFace Embeddings(slower)":
+            # Replace "bert-base-uncased" with the desired HuggingFace model
+            embeddings = HuggingFaceEmbeddings()
 
-    with st.sidebar:
-        st.title("Upload your PDF files here:")
-        pdf_docs = st.file_uploader("You may upload multiple files. Click on the Submit & Process Button", accept_multiple_files=True)
-        if st.button("Submit & Process"):
-            with st.spinner("Processing..."):
-                docs = get_pdf_text(pdf_docs)
-                text_chunks = get_text_chunks(docs)
-                get_vector_store(text_chunks,GOOGLEPALM_API_KEY)
-                st.success("Done")
-
-
-
-if __name__ == "__main__":
-    main()
-
+        retriever = create_retriever(embeddings, splits, retriever_type)
