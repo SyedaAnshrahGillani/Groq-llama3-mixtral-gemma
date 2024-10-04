@@ -63,7 +63,7 @@ def get_groq_response(user_query, context):
     messages = [
     {
         "role": "user",
-        "content": f"As a helpful assistant, answer the user's question if it's in the context. If not, say you don't have that info. For general questions, respond cheerfully: 'I have info about [xyz]. Would you like to ask me something about it?' CONTEXT: {context} USER QUERY: {user_query}"
+        "content": f"As a helpful assistant, answer the user's question if it's in the context. CONTEXT: {context} USER QUERY: {user_query}"
     }
 ]
 
