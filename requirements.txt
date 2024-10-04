@@ -14,3 +14,4 @@ openai
 transformers
 groq # Replace with the correct version if available
 tiktoken
+sentence-transformers
