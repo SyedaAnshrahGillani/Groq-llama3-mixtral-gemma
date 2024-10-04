@@ -63,7 +63,7 @@ def get_groq_response(user_query, context):
     messages = [
         {
             "role": "user",
-            "content": f"Using the provided context: {context}, please answer the following question: {user_query}"
+            "content": f"You're a helpful assistant, According to the provided context if the user asked question answer exists you have to answer but if the answer doesn't existing in the context then just reply that I don't have info regarding that, CONTEXT FOR ANSWERING: {context}, USER QUERY TO ANSWER: {user_query}"
         }
     ]
     
