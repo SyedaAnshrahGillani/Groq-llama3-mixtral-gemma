@@ -3,16 +3,18 @@ import PyPDF2
 import streamlit as st
 from io import StringIO
 from langchain.vectorstores import FAISS
-from langchain.chains import RetrievalQA
 from langchain.retrievers import SVMRetriever
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from dotenv import load_dotenv
-from groq.cloud.core import Completion  # Import Groq Completion
+from groq import Groq  # Import Groq
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Initialize Groq client
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 # Streamlit page configuration
 st.set_page_config(page_title="Document Processing with Groq", page_icon="📄")
@@ -57,18 +59,21 @@ def split_texts(text, chunk_size, overlap):
     return splits
 
 def get_groq_response(user_query, context):
-    sys_prompt = f"""
-    Instructions:
-    - Be helpful and answer questions concisely. If you don't know the answer, say 'I don't know.'
-    - Utilize the context provided for accurate and specific information.
-    - Incorporate your preexisting knowledge to enhance the depth and relevance of your response.
-    Context: {context}
-    """
+    # Create the messages for Groq completion
+    messages = [
+        {
+            "role": "user",
+            "content": f"Using the provided context: {context}, please answer the following question: {user_query}"
+        }
+    ]
     
-    # Use the Groq Completion API to get the response
-    with Completion() as completion:
-        response, id, stats = completion.send_prompt("llama2-70b-4096", user_prompt=user_query, system_prompt=sys_prompt)
-    return response
+    # Use the Groq client to get the completion
+    chat_completion = client.chat.completions.create(
+        messages=messages,
+        model="llama3-8b-8192",
+    )
+    
+    return chat_completion.choices[0].message.content
 
 # Main app logic
 uploaded_files = st.file_uploader("Upload your documents", type=["pdf", "txt"], accept_multiple_files=True)
@@ -105,4 +110,4 @@ if uploaded_files:
         response = get_groq_response(user_query, context)
         
         st.write("Response:")
-        st.write(response)  # Display response in Korean
+        st.write(response)  # Display response in Korean (Groq will handle it)
