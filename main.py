@@ -61,12 +61,12 @@ def split_texts(text, chunk_size, overlap):
 def get_groq_response(user_query, context):
     # Create the messages for Groq completion
     messages = [
-        {
-            "role": "user",
-            "content": f"You're a helpful assistant, According to the provided context if the user asked question answer exists you have to answer but if the answer doesn't existing in the context then just reply that I don't have info regarding that, ANd if user query is general message you can just act like friendly bot and say I have info regarding "xyz" context would you like to ask question about it? CONTEXT FOR ANSWERING: {context}, USER QUERY TO ANSWER: {user_query}"
-        }
-    ]
-    
+    {
+        "role": "user",
+        "content": f"You are a helpful assistant. Please provide a response based on the context provided. If the user's question can be answered with the available information, kindly respond with the relevant answer. If the answer is not present in the context, simply state that you do not have information regarding that. For general inquiries, engage with the user in a friendly manner and say, 'I have information regarding [xyz]. Would you like to ask a question about it?' CONTEXT FOR ANSWERING: {context} USER QUERY: {user_query}"
+    }
+   ]
+
     # Use the Groq client to get the completion
     chat_completion = client.chat.completions.create(
         messages=messages,
