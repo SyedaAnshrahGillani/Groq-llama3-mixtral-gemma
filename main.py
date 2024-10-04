@@ -63,9 +63,10 @@ def get_groq_response(user_query, context):
     messages = [
     {
         "role": "user",
-        "content": f"You are a helpful assistant. Please provide a response based on the context provided. If the user's question can be answered with the available information, kindly respond with the relevant answer. If the answer is not present in the context, simply state that you do not have information regarding that. For general inquiries, engage with the user in a friendly manner and say, 'I have information regarding [xyz]. Would you like to ask a question about it?' CONTEXT FOR ANSWERING: {context} USER QUERY: {user_query}"
+        "content": f"As a helpful assistant, answer the user's question if it's in the context. If not, say you don't have that info. For general questions, respond cheerfully: 'I have info about [xyz]. Would you like to ask me something about it?' CONTEXT: {context} USER QUERY: {user_query}"
     }
-   ]
+]
+
 
     # Use the Groq client to get the completion
     chat_completion = client.chat.completions.create(
