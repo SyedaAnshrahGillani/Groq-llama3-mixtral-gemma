@@ -24,6 +24,12 @@ Ensure you have Python 3.6 or higher installed on your system. Streamlit and oth
     ```bash
     pip install -r requirements.txt
     ```
+## Env template:
+GROQ_API_KEY = ""
+
+HUGGINGFACEHUB_API_TOKEN= ""
+
+OPENAI_API_KEY=""
 
 ## Configuration
 ### Obtaining a Groq API Key
