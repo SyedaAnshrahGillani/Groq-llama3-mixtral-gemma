@@ -31,14 +31,15 @@ class GroqAPI:
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
+SYSTEM_PROMPT = "You are a professional AI. Please generate responses in English to all user inputs."
+
 class Message:
     """Manages chat messages within the Streamlit UI."""
-    system_prompt = "You are a professional AI. Please generate responses in English to all user inputs."
 
 # Initialize chat history if it doesn't exist in session state
     def __init__(self):
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "system", "content": self.system_prompt}]
+            st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
 # Add a new message to the session state
     def add(self, role: str, content: str):
